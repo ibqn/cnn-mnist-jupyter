@@ -1,7 +1,6 @@
 jupyter
 numpy
 matplotlib
-h5py
 
 #opencv-contrib-python
 

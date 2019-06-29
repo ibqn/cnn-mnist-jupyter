@@ -76,9 +76,9 @@ class Network(object):
 
             if test_data is not None:
                 n_test = test_data.shape[0]
-                print(f'Epoch {j:03d}: {self.evaluate(test_data)} / {n_test}')
+                print(f'Epoch {j:02d}: {self.evaluate(test_data)} / {n_test}')
             else:
-                print(f'Epoch {j:03d} complete')
+                print(f'Epoch {j:02d} complete')
 
 
     def update_mini_batch(self, mini_batch, eta):
@@ -143,6 +143,11 @@ class Network(object):
         return nabla_b, nabla_w
 
 
+    def load_weights(self, fpath):
+        with gzip.open(fpath, 'rb') as f:
+            self.biases, self.weights = pickle.load(f, encoding='latin1')
+
+
 def sigmoid(z):
     """The sigmoid function."""
     return 1.0/(1.0 + np.exp(-z))
@@ -174,6 +179,8 @@ if __name__ == '__main__':
 
     dnn = Network(sizes)
 
+    dnn.load_weights('dnn-model-weights.pkl.gz')
+
     print('Test feed forward with an ampty vector')
     inpzero = np.zeros((784, 1))
     res = dnn.feed_forward(inpzero)
@@ -200,4 +207,4 @@ if __name__ == '__main__':
     testing_data = np.array(list(zip(xx_test, y_test)))
 
     print('Apply stochastic gradient decent')
-    dnn.SGD(training_data, epochs=60, batch_size=10, eta=3.0, test_data=testing_data)
+    dnn.SGD(training_data, epochs=10, batch_size=10, eta=3.0, test_data=testing_data)
