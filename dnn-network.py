@@ -34,15 +34,25 @@ class Network(object):
         return a
 
 
-    def evaluate(self, test_data):
+    def evaluate(self, x, y):
         """Return the number of test inputs for which the neural
         network outputs the correct result. Note that the neural
         network's output is assumed to be the index of whichever
         neuron in the final layer has the highest activation."""
-        test_results = [
-            (np.argmax(self.feed_forward(x)), y) for x, y in test_data
-        ]
-        return sum(int(x == y) for x, y in test_results)
+        x = np.array([self.feed_forward(l) for l in x])
+
+        num_x = x.shape[0]
+
+        loss = np.sum(np.linalg.norm(x-y)**2) / (2. * num_x)
+
+        x = np.argmax(x, axis=1).reshape((-1,))
+        y = np.argmax(y, axis=1).reshape((-1,))
+
+        match = np.sum(np.int8(x == y))
+
+        acc = match / num_x * 100
+
+        return loss, acc, match, num_x
 
 
     def cost_derivative(self, output_activations, y):
@@ -51,17 +61,24 @@ class Network(object):
         return (output_activations - y)
 
 
-    def SGD(self, training_data, epochs, batch_size, eta, test_data=None):
+    def SGD(self, x, y, epochs, batch_size, eta, test_data=None):
         """Train the neural network using mini-batch stochastic
-        gradient descent.  The ``training_data`` is a list of tuples
-        ``(x, y)`` representing the training inputs and the desired
-        outputs.  The other non-optional parameters are
-        self-explanatory.  If ``test_data`` is provided then the
-        network will be evaluated against the test data after each
-        epoch, and partial progress printed out.  This is useful for
-        tracking progress, but slows things down substantially."""
+        gradient descent. ``x`` represents the training input data.
+        ``y`` is the corresponding output data.  The other non-optional
+        parameters are self-explanatory.  If ``test_data`` is provided
+        then the network will be evaluated against the test data after
+        each epoch, and partial progress printed out.  This is useful
+        for tracking progress, but slows things down substantially."""
 
+        # The training_data is a list of tuples
+        # (x, y) representing the training inputs
+        # and the desired outputs
+        training_data = np.array(list(zip(x, y)))
         n = training_data.shape[0]
+
+        if test_data is not None:
+            tx, ty = test_data
+            n_test = tx.shape[0]
 
         for j in range(epochs):
             np.random.shuffle(training_data)
@@ -74,9 +91,18 @@ class Network(object):
                 self.update_mini_batch(mini_batch, eta)
             #print('') # print new line
 
+            loss, acc, match, total = self.evaluate(x, y)
+            print(
+                f'Training dataset: {match} / {total},  '
+                f'loss: {loss:.7f},  accuracy: {acc:.2f}%'
+            )
+
             if test_data is not None:
-                n_test = test_data.shape[0]
-                print(f'Epoch {j:02d}: {self.evaluate(test_data)} / {n_test}')
+                loss, acc, match, total = self.evaluate(tx, ty)
+                print(
+                    f'Epoch {j:02d}: test dataset {match} / {total},  '
+                    f'test loss: {loss:.7f},  test accuracy: {acc:.2f}%'
+                )
             else:
                 print(f'Epoch {j:02d} complete')
 
@@ -181,7 +207,7 @@ if __name__ == '__main__':
 
     dnn.load_weights('dnn-model-weights.pkl.gz')
 
-    print('Test feed forward with an ampty vector')
+    print('Test feed forward with an empty vector')
     inpzero = np.zeros((784, 1))
     res = dnn.feed_forward(inpzero)
     print('Resulted output shape:', res.shape)
@@ -202,9 +228,14 @@ if __name__ == '__main__':
     xx_test = x_test.reshape((-1, 784, 1))
 
     yy_train = to_categorical(y_train)
-
-    training_data = np.array(list(zip(xx_train, yy_train)))
-    testing_data = np.array(list(zip(xx_test, y_test)))
+    yy_test = to_categorical(y_test)
 
     print('Apply stochastic gradient decent')
-    dnn.SGD(training_data, epochs=10, batch_size=10, eta=3.0, test_data=testing_data)
+    dnn.SGD(
+        x=xx_train,
+        y=yy_train,
+        epochs=10,
+        batch_size=10,
+        eta=3.0,
+        test_data=(xx_test, yy_test)
+    )
